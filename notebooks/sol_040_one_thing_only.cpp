@@ -25,9 +25,12 @@
 // - all names are appropriate, and
 // - the code is easy to understand.
 
-#import <iostream>
-#import <string>
-#import <vector>
+#include <algorithm>
+#include <array>
+#include <iostream>
+#include <string>
+#include <stdexcept>
+#include <vector>
 
 double handle_money_stuff(int i_dow, double d_spd, const char* pc_n, std::vector<double>& dv_slrs) {
     static std::string sa_dns[] {"Mon", "Tue", "Wed", "Thu", "Fri"};
@@ -55,18 +58,19 @@ double handle_money_stuff(int i_dow, double d_spd, const char* pc_n, std::vector
     return d_t;
 }
 
+#ifdef __CLING__
 std::vector<double> all_salaries{};
 double tax_1{handle_money_stuff(3, 240.0, "Joe", all_salaries)};
 double tax_2{handle_money_stuff(5, 240.0, "Jack", all_salaries)};
 double tax_3{handle_money_stuff(6, 260.0, "Jill", all_salaries)};
 double tax_4{handle_money_stuff(6, 800.0, "Jane", all_salaries)};
+#endif
 
+#ifdef __CLING__
 std::cout << tax_1 << ", " << tax_2 << ", " << tax_3 << ", " << tax_4 << "\n";
+#endif
 
 // ## Proposal for Solution
-
-#include <array>
-#include <stdexcept>
 
 void assert_valid_day_number(int day_number) {
     if (day_number < 1 || day_number > 7) {
@@ -132,15 +136,17 @@ double process_salary(int day_number, double salary_per_day, const char* employe
     return compute_taxes(day_number, salary_per_day);
 }
 
+#ifdef __CLING__
 std::vector<double> all_salaries{};
 double tax_1{process_salary(3, 240.0, "Joe", all_salaries)};
 double tax_2{process_salary(5, 240.0, "Jack", all_salaries)};
 double tax_3{process_salary(6, 260.0, "Jill", all_salaries)};
 double tax_4{process_salary(6, 800.0, "Jane", all_salaries)};
+#endif
 
+#ifdef __CLING__
 std::cout << tax_1 << ", " << tax_2 << ", " << tax_3 << ", " << tax_4 << "\n";
-
-#include <algorithm>
+#endif
 
 void show_compute_day_of_week_name() {
     std::array<int, 7> valid_day_numbers{};
@@ -174,5 +180,62 @@ void show_compute_tax_rate() {
 #ifdef __CLING__
 show_compute_tax_rate();
 #endif
+
+// ## Machine code for simplified versions
+//
+// It may seem the repeatedly performing the `compute_salary_before_taxes()` and `compute_taxes()` might have a huge impact on performance. However, this is not necessarily the case, since C++ compilers are often very good at optimizing code and removing redundant computations. Here is the assembly generated for simplified versions of these functions (without storing the value and outputting the result and omitting the range check for `process_salary()`). The work performed by the two functions seems to be comparable.
+//
+// (However, for more complex functions the compiler may not be able to optimize away multiple calls, so it pays to profile the result.)
+
+// ```
+// handle_money_stuff(int, double, char const*):
+//         movapd  xmm1, xmm0
+//         sub     edi, 1
+//         pxor    xmm0, xmm0
+//         cvtsi2sd        xmm0, edi
+//         mulsd   xmm0, xmm1
+//         comisd  xmm0, QWORD PTR .LC1[rip]
+//         jbe     .L12
+//         movsd   xmm1, QWORD PTR .LC2[rip]
+//         comisd  xmm1, xmm0
+//         jb      .L13
+//         mulsd   xmm0, QWORD PTR .LC3[rip]
+//         ret
+// .L12:
+//         pxor    xmm0, xmm0
+//         ret
+// .L13:
+//         movsd   xmm1, QWORD PTR .LC4[rip]
+//         comisd  xmm1, xmm0
+//         jb      .L14
+//         mulsd   xmm0, QWORD PTR .LC5[rip]
+//         ret
+// .L14:
+//         mulsd   xmm0, QWORD PTR .LC6[rip]
+//         ret
+// ```
+
+// ```
+// process_salary(int, double, char const*):
+//         movapd  xmm1, xmm0
+//         sub     edi, 1
+//         pxor    xmm0, xmm0
+//         cvtsi2sd        xmm0, edi
+//         mulsd   xmm0, xmm1
+//         pxor    xmm1, xmm1
+//         cvttsd2si       eax, xmm0
+//         cmp     eax, 500
+//         jle     .L39
+//         movsd   xmm1, QWORD PTR .LC3[rip]
+//         cmp     eax, 1000
+//         jle     .L39
+//         movsd   xmm1, QWORD PTR .LC5[rip]
+//         cmp     eax, 2000
+//         jle     .L39
+//         movsd   xmm1, QWORD PTR .LC6[rip]
+// .L39:
+//         mulsd   xmm0, xmm1
+//         ret
+// ```
 
 
