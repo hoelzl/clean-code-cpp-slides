@@ -2,7 +2,7 @@
 // ---
 // jupyter:
 //   jupytext:
-//     formats: ipynb,py:percent,cpp:percent
+//     formats: ipynb,cpp:percent
 //     text_representation:
 //       extension: .cpp
 //       format_name: percent
